@@ -1,7 +1,7 @@
 # =========================================================================== #
 #               Side-splitting model for network meta-analysis                #
 # --------------------------------------------------------------------------- #
-#             !! Currently only support continous outcomes !!                 #
+#             !! Currently only support continuous outcomes !!                #
 #  !! Check inconsistency identifiablity (van Valkenhoef, 2012) beforehand!!  #
 #                                                                             #
 #  main function: nma_side(s, y, v, trt, comp, ref,                           #

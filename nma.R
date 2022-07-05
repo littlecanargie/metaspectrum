@@ -1,10 +1,10 @@
 # =========================================================================== #
-#               Evidence-splitting model for network meta-analysis            #
+#        Network meta-analysis under structural equation modelling            #
 # --------------------------------------------------------------------------- #
 #             !! Currently only support continuous outcomes !!                #
-#  !! Check inconsistency identifiablity (van Valkenhoef, 2012) beforehand!!  #
+#         !! Currently does not check if the network is connected!!           #
 #                                                                             #
-#  main function: nma_incon(s, y, v, trt, comp, data, printout, large_var)    #
+#  main function: nma(s, y, v, trt, comp, data, printout, large_var)          #
 #                                                                             #
 #  data: Input data frame (long form, i.e. one study-treatment pair per row)  #
 #  s: Column name for study (default "s")                                     #
@@ -12,15 +12,17 @@
 #  v: Column name for outcome variance (default "v")                          #
 #  trt: Column name for treatment (default "trt")                             #
 #    -- s, y, v, trt can be input as vectors directly if data is set to NULL  #
-#  comp: Length-2 vector listing the treatments in the contrast of interest   #
-#    -- Effect is calculated as the second treatment - the first treatment    #
+#  trt_list: Vector of treatment in the desired order for the output          #
+#  baseline: Set the study effect as fixed or random (default F)              #
+#  trt_het: Distinct degree of heterogeneity for each treatment (default F)   #
+#  uwls: Use unweighted least squares (default F)                             #
 #  printout: Boolean for printing out the results (default T)                 #
 #  large_var: Large variance for incidental parameter problem (default 1e5)   #
 #  conf: confidence level of the confidence intervals (default .95)           #
 #    -- Confidence intervals are constructed via likelihood-based approach    #
 #                                                                             #
 # --------------------------------------------------------------------------- #
-#  Author : Ming-Chieh Shih (Last updated 2022-07-03)                         #
+#  Author : Ming-Chieh Shih (Last updated 2022-07-05)                         #
 # =========================================================================== #
 
 require.i <- function(pkg){
@@ -33,55 +35,52 @@ require.i <- function(pkg){
 # (Dong2013, Linde 2015, Pagliaro1992)
 require.i(c("OpenMx", "tidyverse", "netmeta", "meta"))
 
-nma_incon <- function(s = "s", y = "y", v = "v", trt = "trt", comp, 
-                      data = NULL, printout = T, large_var = 1e5, conf = .95){
+nma <- function(s = "s", y = "y", v = "v", trt = "trt", trt_list = NULL,
+                baseline = F, trt_het = F, uwls = F,
+                data = NULL, printout = T, large_var = 1e5, conf = .95){
   if(is.null(data)) data <- sys.frame(sys.parent())
   
   # Obtain coding book for treatment recoding indices and number of treatments
-  trt_list <- levels(factor(data[[trt]]))
+  if(is.null(trt_list)) trt_list <- levels(factor(data[[trt]]))
   ntrt <- length(trt_list)
-  
-  # Obtain treatment indices for the contrast of interest (coi)
-  coi <- c(which(trt_list == comp[1]), which(trt_list == comp[2]))
-  
-  # coi contrast vector for later use
-  cvec <- rep(0, ntrt); cvec[coi[1]] <- -1; cvec[coi[2]] <- 1
   
   # Pivot to wide table, define direct study with coi, and 
   # fill in placeholder variance for missing arms
   data <- data.frame(s = data[[s]], 
                      y = data[[y]], 
                      v = data[[v]], 
-                     trt = as.numeric(factor(data[[trt]])))
+                     trt = as.numeric(factor(data[[trt]], levels = trt_list)))
+  
   data <- data %>% 
     pivot_wider(id_cols = s, names_from = trt, 
                 names_sep = "", values_from = c(y, v)) %>%
-    mutate(., dir = as.numeric((!is.na(.[,paste0("y", coi[1])])) & 
-                                 (!is.na(.[,paste0("y", coi[2])])))) %>%
     mutate(across(starts_with('v'), ~replace_na(., 1)))
   
   # Variable name vectors for future use
   y_var <- paste0("y", 1:ntrt)
   u_var <- paste0("u", 1:ntrt)
   v_var <- paste0("data.v", 1:ntrt)
-  
-  # Define dat for direct and indirect studies
-  data_dir <- mxData(data.frame(data %>% filter(dir == 1)), type = "raw")
-  data_ind <- mxData(data.frame(data %>% filter(dir == 0)), type = "raw")
+  e_var <- paste0("e", 1:ntrt)
   
   # Definition of parameter matrices
   # d (d1 - d'ntrt'): column vector of size ntrt for treatment effects 
-  # incmat (inc): inconsistency parameter
   # sigsq (sigsq): half the heterogeneity variance
+  # sqrtphimat (sqrtphi): square root of the uwls weight 
   d <- mxMatrix(type = "Full", nrow = ntrt, ncol = 1, free = c(F, rep(T, ntrt-1)),
                 labels = c(paste0("d", 1:ntrt)), values = rep(0, ntrt), name = "dmat")
-  inc <- mxMatrix(type = "Full", nrow = 1, ncol = 1, free = T, 
-                  labels = "inc", name = "incmat", values = 0)
-  sig <- mxMatrix(type = "Full", nrow = 1, ncol = 1, free = T, labels="sig", name = "sigmat")
+  
+  sig_lb <- "sig"; if(trt_het) sig_lb <- paste0("sig", 1:ntrt)
+  sig <- mxMatrix(type = "Full", nrow = ifelse(trt_het, ntrt, 1), ncol = 1, free = T, 
+                  labels = sig_lb, name = "sigmat")
   sigsq <- mxAlgebra(sigmat^2, name = "sigsq")
   
+  sqrtphi_lb <- "sqrtphi"; if(trt_het) sqrtphi_lb <- paste0("sqrtphi", 1:ntrt)
+  sqrtphi <- mxMatrix(type = "Full", nrow = ifelse(trt_het, ntrt, 1), ncol = 1, free = T, 
+                      labels = sqrtphi_lb, name = "sqrtphimat")
+  
   # Model lines for study effects
-  s_v <- mxPath(from = "mu", arrows = 2, free = F, values = large_var)
+  s_v <- mxPath(from = "mu", arrows = 2, free = baseline, 
+                labels = "sig_bsq", values = ifelse(baseline, 1, large_var))
   s_p <- mxPath(from = "mu", to = y_var, free = F, values = 1)
   
   # Model lines for treatment effects
@@ -89,58 +88,73 @@ nma_incon <- function(s = "s", y = "y", v = "v", trt = "trt", comp,
                 labels = paste0("d", 1:ntrt))
   
   # Model lines for heterogeneity effects
-  h_v <- mxPath(from = u_var, arrows = 2, free = F, labels = "sigsq[1,1]")
+  h_trt <- 1; if(trt_het) h_trt <- 1:ntrt
+  h_v <- mxPath(from = u_var, arrows = 2, free = F, 
+                labels = paste0("sigsq[",h_trt,",1]"))
   h_p <- mxPath(from = u_var, to = y_var, free = F, values = 1)
   
   # Model lines for error variance
-  e_v <- mxPath(from = y_var, arrows = 2, free = F, labels = v_var)
+  e_v <- mxPath(from = e_var, arrows = 2, free = F, labels = v_var)
+  if(uwls){
+    e_p <- mxPath(from = e_var, to = y_var, free = T, labels = sqrtphi_lb)
+  }else{
+    e_p <- mxPath(from = e_var, to = y_var, free = F, values = 1)
+  }
   
-  # p: vector of inconsistency parameter splitting weight 
-  #    between the treatments of interest
-  v <- mxMatrix(type = "Full", nrow = 2, ncol = 1, free = F, 
-                labels = paste0("data.v", coi), name = "v")
-  a <- mxMatrix(type = "Full", nrow = 2, ncol = 1, free = F, 
-                values = c(-1, 1), name = "a")
-  p <- mxAlgebra(a * (v + sigsq) / (sum(v) + 2*sigsq), name = "p")
+  # Extra matrices for output
+  cmat <- matrix(0, nrow = ntrt*(ntrt-1)/2, ncol = ntrt)
+  tmat <- matrix("", nrow = ntrt*(ntrt-1)/2, ncol = 2)
+  nowrow <- 1
+  for(i in 1:(ntrt-1)){
+    for(j in (i+1):ntrt){
+      cmat[nowrow, i] <- -1; tmat[nowrow, 1] <- trt_list[i]
+      cmat[nowrow, j] <- 1; tmat[nowrow, 2] <- trt_list[j]
+      nowrow <- nowrow + 1
+    }
+  }
+  colnames(tmat) <- c("reference", "treatment")
   
-  # Model lines for inconsistency 
-  w_v <- mxPath(from = "w", arrows = 2, free = F, values = 0)
-  w_m <- mxPath(from = "one", to = "w", free = T, labels = "inc")
-  w_p <- mxPath(from = "w", to = paste0("y", coi), free = F, labels = c("p[1,1]", "p[2,1]"))
+  b <- mxMatrix(type = "Full", nrow = ntrt*(ntrt-1)/2, ncol = ntrt, free = F,
+                values = c(cmat), name = "b")
+  est <- mxAlgebra(b %*% dmat, name = "est")
   
-  # Additional calculations for direct and indirect estimates
-  b <- mxMatrix(type = "Full", nrow = 1, ncol = ntrt, free = F,
-                values = cvec, name = "b")
-  dir_est <- mxAlgebra(b %*% dmat + incmat, name = "dir_est")
-  ind_est <- mxAlgebra(b %*% dmat, name = "ind_est")
-  
-  # Putting together the models for direct and indirect studies
-  mod_dir <- mxModel("dir", type="RAM", 
-                     manifestVars = y_var, latentVars = c(u_var, "mu", "w"),
-                     data_dir,
-                     s_v, s_p, t_p, h_v, h_p, e_v, d, sig, sigsq, 
-                     inc, v, a, p, w_v, w_m, w_p)
-  mod_ind <- mxModel("ind", type="RAM", 
-                     manifestVars = y_var, latentVars = c(u_var, "mu"),
-                     data_ind,
-                     s_v, s_p, t_p, h_v, h_p, e_v, d, sig, sigsq)
-  mod <- mxModel("mod", mod_dir, mod_ind, 
-                 mxFitFunctionMultigroup(c("dir.fitfunction","ind.fitfunction")),
-                 b, d, inc, dir_est, ind_est, 
-                 mxCI(c('dir_est','ind_est','inc'), interval = conf))
+  # Putting together the model
+  if(uwls){
+    mod <- mxModel("LGM", type="RAM", manifestVars = y_var, latentVars = c(u_var, e_var, "mu"),
+                   mxData(data.frame(data), type = "raw"),
+                   # parameter matrices
+                   d, sqrtphi,
+                   # study effect
+                   s_v, s_p,
+                   # treatment effect
+                   t_p,
+                   # error
+                   e_v, e_p,
+                   b, est, mxCI('est'))
+  }else{
+    mod <- mxModel("LGM", type="RAM", manifestVars = y_var, latentVars = c(u_var, e_var, "mu"),
+                   mxData(data.frame(data), type = "raw"),
+                   # parameter matrices
+                   d, sig, sigsq,
+                   # study effect
+                   s_v, s_p,
+                   # treatment effect
+                   t_p,
+                   # heterogeneity effect
+                   h_v, h_p,
+                   # error
+                   e_v, e_p,
+                   b, est, mxCI('est')) 
+  }
   
   res <- mxRun(mod, intervals = T)
-  output <- res$output$confidenceIntervals[, c(2,1,3)]
-  rownames(output) <- c("Direct Estimate", "Indirect Estimate", "Difference")
-  colnames(output) <- c("Estimate", "Lower Bound", "Upper Bound")
-  if(printout){
-    cat("Evidence-splitting model for", comp[2], "compared to", comp[1], ":\n")
-    print(output)
-  }
+  output <- as.tibble(res$output$confidenceIntervals[, c(2,1,3)])
+  output <- cbind(tmat, output)
+  print(output)
   return(res)
 }
 
-#### Dong2013 LABA-ICS compared to LABA ####
+#### Dong2013 ####
 
 data(Dong2013, package = "netmeta")
 
@@ -153,10 +167,9 @@ Dong_new <- as_tibble(Dong2013) %>%
   mutate(y = log((death + 0.5 * have_zero) / (randomized - death + 0.5 * have_zero)),
          v = 1/(death + 0.5 * have_zero) + 1/(randomized - death + 0.5 * have_zero))
 
-Dong_res <- nma_incon(y = "y", v = "v", trt = "treatment", s = "id", 
-                      comp = c("LABA", "LABA-ICS"), data = Dong_new)
+Dong_res <- nma(y = "y", v = "v", trt = "treatment", s = "id", data = Dong_new)
 
-#### Linde2015 Hypericum compared to Placebo ####
+#### Linde2015 ####
 
 data(Linde2015, package = "netmeta")
 
@@ -174,11 +187,9 @@ Linde_new <- Linde_new %>%
   mutate(y = log((resp + 0.5 * have_zero) / (n - resp + 0.5 * have_zero)),
          v = 1/(resp + 0.5 * have_zero) + 1/(n - resp + 0.5 * have_zero))
 
-Linde_res <- nma_incon(y = "y", v = "v", trt = "treatment", s = "id", 
-                      comp = c("Placebo", "Hypericum"), data = Linde_new)
+Linde_res <- nma(y = "y", v = "v", trt = "treatment", s = "id", data = Linde_new)
 
-### Pagliaro1992 (the data used in Shih & Tu, 2021) ###
-### Beta-blocker compared to Sclerotherapy          ###
+### Pagliaro1992 (the data used in Shih & Tu, 2019) ###
 
 data(Pagliaro1992 , package = "meta")
 Pagliaro_new <- as_tibble(Pagliaro1992) %>% 
@@ -200,5 +211,18 @@ Pagliaro_new <- Pagliaro_new %>%
   mutate(y = log((bleed.exp + 0.5 * have_zero) / (n.exp - bleed.exp + 0.5 * have_zero)),
          v = 1/(bleed.exp + 0.5 * have_zero) + 1/(n.exp - bleed.exp + 0.5 * have_zero))
 
-Pagliaro_res <- nma_incon(y = "y", v = "v", trt = "treat.exp", s = "id", 
-                          comp = c("Sclerotherapy", "Beta-blocker"), data = Pagliaro_new)
+Pagliaro_res <- nma(y = "y", v = "v", trt = "treat.exp", s = "id", 
+                    trt_list = c("Placebo", "Sclerotherapy", "Beta-blocker"),
+                    data = Pagliaro_new)
+
+Pagliaro_het <- nma(y = "y", v = "v", trt = "treat.exp", s = "id", 
+                    trt_list = c("Placebo", "Sclerotherapy", "Beta-blocker"),
+                    trt_het = T, data = Pagliaro_new)
+
+Pagliaro_uwls <- nma(y = "y", v = "v", trt = "treat.exp", s = "id", 
+                     trt_list = c("Placebo", "Sclerotherapy", "Beta-blocker"),
+                     uwls= T, data = Pagliaro_new)
+
+Pagliaro_uwls_het <- nma(y = "y", v = "v", trt = "treat.exp", s = "id", 
+                         trt_list = c("Placebo", "Sclerotherapy", "Beta-blocker"),
+                         trt_het = T, uwls= T, data = Pagliaro_new)
