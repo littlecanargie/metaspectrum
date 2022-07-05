@@ -79,6 +79,7 @@ nma <- function(s = "s", y = "y", v = "v", trt = "trt", trt_list = NULL,
                       labels = sqrtphi_lb, name = "sqrtphimat")
   
   # Model lines for study effects
+  s_m <- mxPath(from = "one", to = "mu", free = baseline, labels = "mu0", values = 0)
   s_v <- mxPath(from = "mu", arrows = 2, free = baseline, 
                 labels = "sig_bsq", values = ifelse(baseline, 1, large_var))
   s_p <- mxPath(from = "mu", to = y_var, free = F, values = 1)
@@ -125,7 +126,7 @@ nma <- function(s = "s", y = "y", v = "v", trt = "trt", trt_list = NULL,
                    # parameter matrices
                    d, sqrtphi,
                    # study effect
-                   s_v, s_p,
+                   s_m, s_v, s_p,
                    # treatment effect
                    t_p,
                    # error
@@ -137,7 +138,7 @@ nma <- function(s = "s", y = "y", v = "v", trt = "trt", trt_list = NULL,
                    # parameter matrices
                    d, sig, sigsq,
                    # study effect
-                   s_v, s_p,
+                   s_m, s_v, s_p,
                    # treatment effect
                    t_p,
                    # heterogeneity effect

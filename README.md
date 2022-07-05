@@ -5,7 +5,10 @@ This repository hosts R codes for meta-analysis spectrum methods under the struc
 
 ### nma.R
 - Contains standalone function for network meta-analysis under the SEM framework.
-- This function permits setting unequal degrees of heterogeneity for each treatment, setting the heterogeneity as multiplicative on the error variance (unweighted least squares), or both.
+- This function permits several extensions to the Lu-Ades model that can be jointly applied 
+    - Setting unequal degrees of heterogeneity for each treatment
+    - Setting the heterogeneity as multiplicative on the error variance (unweighted least squares)
+    - Setting the study effect as random effects
 - For details and citation, please refer to [this 2019 RSM paper](https://doi.org/10.1002/jrsm.1344). The output confidence intervals can be a little wider than demonstrated in the paper since OpenMx uses likelihood-based construction of confidence intervals.
 
 ### side_splitting.R
