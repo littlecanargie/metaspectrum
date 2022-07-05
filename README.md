@@ -1,5 +1,5 @@
 # metaspectrum
-This repository hosts R codes for meta-analysis spectrum methods under the structural equation modeling (SEM) ecosystem. SEM has been proven to be a useful tool for meta-analysis spectrum methods from its ability to specify complex, multivariate models with latent variables. Our code runs under the *R* environment and depends on [*OpenMx*](https://openmx.ssri.psu.edu/) to carryout the SEM specification and estimation procedures.  The estimation procedure is usually reasonally fast, yet the confidence interval construction may take a some time since they're constructed using a likelihood-based approach in *OpenMx*. 
+This repository hosts R codes for meta-analysis spectrum methods under the structural equation modeling (SEM) ecosystem. SEM has been proven to be a useful tool for meta-analysis spectrum methods from its ability to specify complex, multivariate models with latent variables. Our code runs under the *R* environment and depends on [*OpenMx*](https://openmx.ssri.psu.edu/) to carryout the SEM specification and estimation procedures.  The estimation procedure is usually reasonably fast, but the construction of confidence intervals may take a some time since they're constructed using a likelihood-based approach in *OpenMx*. 
 
 ## Network meta-analysis
 
