@@ -1,5 +1,5 @@
 # metaspectrum
-This repository hosts R codes for meta-analysis spectrum methods under the structural equation modeling (SEM) framework. SEM has been proven to be a useful tool for meta-analysis spectrum methods from its ability to specify complex, multivariate models with latent variables. Our code runs under the R environment and depends on [OpenMx](https://openmx.ssri.psu.edu/) to carryout the SEM specification and estimation procedures. 
+This repository hosts R codes for meta-analysis spectrum methods under the structural equation modeling (SEM) ecosystem. SEM has been proven to be a useful tool for meta-analysis spectrum methods from its ability to specify complex, multivariate models with latent variables. Our code runs under the R environment and depends on [OpenMx](https://openmx.ssri.psu.edu/) to carryout the SEM specification and estimation procedures. 
 
 ## side_splitting.R
 - Contains standalone function for side-splitting and symmetric side-splitting models for inconsistency in network meta-analysis.
