@@ -15,7 +15,7 @@
 #    -- s, y, v, trt can be input as vectors directly if data is set to NULL  #
 #  ref: Takes values "1", "2" or "sym". "1" and "2" sets side-splitting       #
 #       models with comp[1] or comp[2] as reference treatment. "sym" sets     #
-#       the symmetric side-splitting model (default "sym")
+#       the symmetric side-splitting model (default "sym")                    #
 #  comp: Length-2 vector listing the treatments in the contrast of interest   #
 #    -- Effect is calculated as the second treatment - the first treatment    #
 #  printout: Boolean for printing out the results (default T)                 #
