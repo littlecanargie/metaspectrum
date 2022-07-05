@@ -6,7 +6,7 @@ This repository hosts R codes for meta-analysis spectrum methods under the struc
 ### nma.R
 - Contains standalone function for network meta-analysis under the SEM framework.
 - This function permits setting unequal degrees of heterogeneity for each treatment, setting the heterogeneity as multiplicative on the error variance (unweighted least squares), or both.
-- Details can be found in [this 2019 RSM paper](https://doi.org/10.1002/jrsm.1344). The output confidence intervals can be a little wider than demonstrated in the paper since OpenMx uses likelihood-based construction of confidence intervals.
+- For details and citation, please refer to [this 2019 RSM paper](https://doi.org/10.1002/jrsm.1344). The output confidence intervals can be a little wider than demonstrated in the paper since OpenMx uses likelihood-based construction of confidence intervals.
 
 ### side_splitting.R
 - Contains standalone function for side-splitting and symmetric side-splitting models for inconsistency in network meta-analysis.
@@ -15,4 +15,4 @@ This repository hosts R codes for meta-analysis spectrum methods under the struc
 
 ### evidence_splitting.R
 - Contains standalone function for evidence-splitting model, an approach to inconsistency in network meta-analysis that takes evidence structure into account.
-- The details of this model and why it provides more sensible results than previous models can be found in [this 2021 RSM paper](https://doi.org/10.1002/jrsm.1480). The output confidence intervals can be a little wider than demonstrated in the paper since OpenMx uses likelihood-based construction of confidence intervals.
+- For citation and details (eg. why it provides more sensible results than previous models), please refer to [this 2021 RSM paper](https://doi.org/10.1002/jrsm.1480). The output confidence intervals can be a little wider than demonstrated in the paper since OpenMx uses likelihood-based construction of confidence intervals.
