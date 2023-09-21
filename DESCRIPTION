@@ -1,0 +1,20 @@
+Package: metaspectrum
+Title: metaspectrum
+Version: 0.0-1
+Date: 2023-09-20
+Depends: R (>= 4.0.0)
+Imports: OpenMx, dplyr, tidyr
+Suggests: meta, netmeta
+Authors@R: c(person("Ming-Chieh", "Shih",
+                    role = c("cre", "aut"),
+                    email = "mcshih@mx.nthu.edu.tw"),
+             person("Guido", "Schwarzer",
+                    role = "ctb",
+                    email = "guido.schwarzer@uniklinik-freiburg.de",
+                    comment = c(ORCID = "0000-0001-6214-9087")))
+Author: Ming-Chieh Shih [cre, aut], Guido Schwarzer [ctb]
+Maintainer: Ming-Chieh Shih <mcshih@mx.nthu.edu.tw>
+Description: This is a full sentence describing R package metaspectrum.
+License: GPL (>= 3)
+Encoding: UTF-8
+RoxygenNote: 7.2.3
